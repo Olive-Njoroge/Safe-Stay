@@ -1,7 +1,10 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
+const http = require('http');  // <-- NEW
+const { Server } = require('socket.io');  // <-- NEW
 const connectDB = require('./config/db');
+const cors = require('cors');  // <-- Optional but recommended
 
 dotenv.config();
 
@@ -9,30 +12,42 @@ dotenv.config();
 connectDB();
 
 const app = express();
-
-// Middleware to parse JSON
 app.use(express.json());
+app.use(cors());  // Allow frontend to connect (adjust origin in production)
 
 // Import Routes
 const billRoutes = require('./routes/billsRoute');
-app.use('/api/bills', billRoutes);
-
 const tenantRoutes = require('./routes/tenantRoute');
-app.use('/api/tenants', tenantRoutes);
-
 const landlordRoutes = require('./routes/landlordRoute');
-app.use('/api/landlord', landlordRoutes)
-
 const complaintRoutes = require('./routes/complaintRoute');
-app.use('/api/complaints', complaintRoutes);
+const chatRoutes = require('./routes/chatRoutes');  // <-- NEW
 
-// Test Route (optional)
+app.use('/api/bills', billRoutes);
+app.use('/api/tenants', tenantRoutes);
+app.use('/api/landlord', landlordRoutes);
+app.use('/api/complaints', complaintRoutes);
+app.use('/api/chats', chatRoutes);  // <-- NEW
+
+// Test Route
 app.get('/', (req, res) => {
   res.send('Home Management Backend Running');
 });
 
-// Server Listen
+// Create HTTP Server & Socket.IO
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*',  // For development — tighten for production
+    methods: ['GET', 'POST', 'PUT', 'DELETE']
+  }
+});
+
+// Import Socket Handler
+const chatSocket = require('./socket/index');
+chatSocket(io);  // Call the socket logic
+
+// Start Server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
