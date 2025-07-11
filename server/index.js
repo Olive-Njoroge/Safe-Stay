@@ -23,6 +23,8 @@ app.use('/api/tenants', tenantRoutes);
 const landlordRoutes = require('./routes/landlordRoute');
 app.use('/api/landlord', landlordRoutes)
 
+const complaintRoutes = require('./routes/complaintRoute');
+app.use('/api/complaints', complaintRoutes);
 
 // Test Route (optional)
 app.get('/', (req, res) => {
