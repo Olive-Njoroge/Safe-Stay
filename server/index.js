@@ -15,14 +15,13 @@ app.use(express.json());
 
 // Import Routes
 const billRoutes = require('./routes/billsRoute');
-// Add more routes later: tenantRoutes, landlordRoutes etc.
-
-// Use Routes
 app.use('/api/bills', billRoutes);
-
 
 const tenantRoutes = require('./routes/tenantRoute');
 app.use('/api/tenants', tenantRoutes);
+
+const landlordRoutes = require('./routes/landlordRoute');
+app.use('/api/landlord', landlordRoutes)
 
 
 // Test Route (optional)
