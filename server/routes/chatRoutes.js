@@ -1,5 +1,5 @@
 const express = require('express');
-const { createChat, getAllChats, getChatsByTenant } = require('../controllers/chatController');
+const { createChat, getAllChats, getChatsByNationalID } = require('../controllers/chatController');
 
 const router = express.Router();
 
@@ -9,7 +9,7 @@ router.post('/', createChat);
 // ✅ Get all chats
 router.get('/', getAllChats);
 
-// ✅ Get chats by tenant name
-router.get('/:tenantName', getChatsByTenant);
+// ✅ Get chats by user National ID
+router.get('/:nationalID', getChatsByNationalID);
 
 module.exports = router;

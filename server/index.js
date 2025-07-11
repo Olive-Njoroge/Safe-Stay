@@ -17,16 +17,14 @@ app.use(cors());  // Allow frontend to connect (adjust origin in production)
 
 // Import Routes
 const billRoutes = require('./routes/billsRoute');
-const tenantRoutes = require('./routes/tenantRoute');
-const landlordRoutes = require('./routes/landlordRoute');
 const complaintRoutes = require('./routes/complaintRoute');
-const chatRoutes = require('./routes/chatRoutes');  // <-- NEW
+const chatRoutes = require('./routes/chatRoutes'); 
+const authRoutes = require('./routes/authRoutes'); // <-- NEW
 
 app.use('/api/bills', billRoutes);
-app.use('/api/tenants', tenantRoutes);
-app.use('/api/landlord', landlordRoutes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/chats', chatRoutes);  // <-- NEW
+app.use('/api/auth', authRoutes);
 
 // Test Route
 app.get('/', (req, res) => {

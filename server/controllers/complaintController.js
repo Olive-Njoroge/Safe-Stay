@@ -1,33 +1,36 @@
 const Complaint = require('../models/Complaint');
-const Tenant = require('../models/Tenant');
+const User = require('../models/User');
 
-// @desc    Submit a new complaint (Tenant)
-// @route   POST /api/complaints
+// 👉 Create a new complaint (Tenant)
 exports.createComplaint = async (req, res) => {
   const { tenantId, title, description } = req.body;
 
   try {
-    const tenant = await Tenant.findById(tenantId);
+    // Verify that the tenant exists and is actually a tenant
+    const tenant = await User.findOne({ _id: tenantId, role: 'Tenant' });
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
 
     const complaint = await Complaint.create({
       tenant: tenantId,
       title,
-      description
+      description,
+      status: 'Pending'  // Default status
     });
 
-    res.status(201).json(complaint);
+    res.status(201).json({
+      message: 'Complaint submitted successfully',
+      complaint
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// @desc    Get all complaints (Landlord/Admin)
-// @route   GET /api/complaints
+// 👉 Get all complaints (Landlord/Admin view)
 exports.getAllComplaints = async (req, res) => {
   try {
     const complaints = await Complaint.find()
-      .populate('tenant', 'name nationalID')
+      .populate('tenant', 'name email nationalID role')  // Get tenant details
       .sort({ createdAt: -1 });
 
     res.status(200).json(complaints);
@@ -36,12 +39,13 @@ exports.getAllComplaints = async (req, res) => {
   }
 };
 
-// @desc    Get complaints by Tenant ID
-// @route   GET /api/complaints/tenant/:tenantId
+// 👉 Get complaints by Tenant ID
 exports.getComplaintsByTenant = async (req, res) => {
+  const { tenantId } = req.params;
+
   try {
-    const complaints = await Complaint.find({ tenant: req.params.tenantId })
-      .populate('tenant', 'name nationalID')
+    const complaints = await Complaint.find({ tenant: tenantId })
+      .populate('tenant', 'name email nationalID role')
       .sort({ createdAt: -1 });
 
     res.status(200).json(complaints);
@@ -50,24 +54,27 @@ exports.getComplaintsByTenant = async (req, res) => {
   }
 };
 
-// @desc    Update complaint status (Landlord updates to Resolved/In Progress)
-// @route   PUT /api/complaints/:complaintId
+// 👉 Update complaint status (Landlord updates)
 exports.updateComplaintStatus = async (req, res) => {
-  const { status } = req.body;
+  const { complaintId } = req.params;
+  const { status } = req.body;  // Expected: "Resolved", "In Progress", etc.
 
   try {
     const updatedComplaint = await Complaint.findByIdAndUpdate(
-      req.params.complaintId,
-      { 
-        status, 
-        resolvedAt: status === 'Resolved' ? new Date() : null 
+      complaintId,
+      {
+        status,
+        resolvedAt: status === 'Resolved' ? new Date() : null
       },
       { new: true }
-    ).populate('tenant', 'name nationalID');
+    ).populate('tenant', 'name email nationalID role');
 
     if (!updatedComplaint) return res.status(404).json({ message: 'Complaint not found' });
 
-    res.status(200).json(updatedComplaint);
+    res.status(200).json({
+      message: 'Complaint status updated successfully',
+      complaint: updatedComplaint
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
