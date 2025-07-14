@@ -1,39 +1,68 @@
 const Chat = require('../models/Chat');
+const User = require('../models/User');
 
-module.exports = (io) => {
-  io.on('connection', (socket) => {
-    console.log('✅ User connected:', socket.id);
+const handleSocketConnection = (io) => {
+  io.on("connection", (socket) => {
+    console.log("Socket connected", socket.id);
 
-    // Typing indicators (optional)
-    socket.on('typing', (username) => {
-      io.emit('typing', username);
-    });
+    socket.on("joinRoom", async ({ username, roomId }) => {
+      const user = await User.findOneAndUpdate(
+        { name: username }, // use `name` instead of `username`
+        { socketId: socket.id, isOnline: true },
+        { new: true }
+      );
 
-    socket.on('stopTyping', (username) => {
-      io.emit('stopTyping', username);
-    });
+      if (!user) return;
 
-    // Send message
-    socket.on('sendMessage', async (data) => {
-      const { senderName, receiverName, senderRole, receiverRole, content } = data;
+      socket.join(roomId);
+      io.to(roomId).emit("userJoined", { user, roomId });
 
-      try {
-        const chat = await Chat.create({
-          senderName,
-          receiverName,
-          senderRole,
-          receiverRole,
-          content
-        });
+      // Typing
+      socket.on("typing", () => {
+        socket.to(roomId).emit("typing", username);
+      });
 
-        io.emit('newMessage', chat);
-      } catch (error) {
-        console.error('❌ Error saving message:', error.message);
-      }
-    });
+      socket.on("stopTyping", () => {
+        socket.to(roomId).emit("stopTyping", username);
+      });
 
-    socket.on('disconnect', () => {
-      console.log('❌ User disconnected:', socket.id);
+      // Send message
+      socket.on("sendMessage", async ({ content, receiverName }) => {
+        try {
+          const receiver = await User.findOne({ name: receiverName });
+
+          if (!receiver) return;
+
+          const message = await Chat.create({
+            senderName: user.name,
+            receiverName: receiver.name,
+            senderId: user._id,
+            receiverId: receiver._id,
+            senderRole: user.role,
+            receiverRole: receiver.role,
+            content: content
+          });
+
+          io.to(roomId).emit("newMessage", message); // or send to receiver.socketId if private
+        } catch (error) {
+          console.error("Message sending error:", error);
+        }
+      });
+
+      // Disconnect
+      socket.on("disconnect", async () => {
+        const offlineUser = await User.findOneAndUpdate(
+          { socketId: socket.id },
+          { isOnline: false },
+          { new: true }
+        );
+
+        if (offlineUser) {
+          io.emit("userOffline", offlineUser.name);
+        }
+      });
     });
   });
 };
+
+module.exports = handleSocketConnection;
