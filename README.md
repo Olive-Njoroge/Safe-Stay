@@ -1,8 +1,3 @@
-Absolutely, Olive! Here's a well-structured and professional `README.md` for your **SafeStay Home Management System**:
-
----
-
-````markdown
 # SafeStay 🏡
 
 **SafeStay** is a full-stack home rental management system built to simplify property management, tenant communication, billing, and legal awareness. This application enables landlords and tenants to interact seamlessly, maintain accurate records, and foster transparency in the rental process.
