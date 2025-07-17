@@ -1,29 +1,45 @@
 const express = require('express');
 const {
-  generateBill,
-  getBillsByTenant,
-  markBillAsPaid,
-  getAllBills,
-  getMyBills
+  generateMonthlyBills,
+  getBillsForApartment,
+  makeCashPayment,
+  getMyBills,
+  getUnpaidBills,
+  getPaidBills,
+  updateBill,
+  downloadBillPDF,
+  downloadPaymentReceiptPDF
 } = require('../controllers/billsController');
 
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// ✅ Protected: Generate new bill
-router.post('/generate', protect, generateBill);
+// ✅ Protected: Generate monthly bills (Landlord only)
+router.post('/generate-monthly', protect, generateMonthlyBills);
 
-// ✅ Protected: Get logged-in tenant’s bills (MUST come before /:tenantId)
+// ✅ Protected: Get logged-in tenant's bills
 router.get('/me', protect, getMyBills);
 
-// ✅ Protected: Get all bills (Landlord/Admin)
-router.get('/', protect, getAllBills);
+// ✅ Protected: Get all bills for landlord's apartment
+router.get('/apartment', protect, getBillsForApartment);
 
-// ✅ Protected: Get all bills for a specific tenant (Landlord/Admin)
-router.get('/:tenantId', protect, getBillsByTenant);
+// ✅ Protected: Get unpaid bills (Landlord only)
+router.get('/unpaid', protect, getUnpaidBills);
 
-// ✅ Protected: Mark bill as paid
-router.put('/:billId/pay', protect, markBillAsPaid);
+// ✅ Protected: Get paid bills (Landlord only)
+router.get('/paid', protect, getPaidBills);
+
+// ✅ Protected: Make cash payment (Tenant only)
+router.post('/pay-cash', protect, makeCashPayment);
+
+// ✅ Protected: Update bill (Landlord only)
+router.put('/:billId', protect, updateBill);
+
+// ✅ Protected: Download bill as PDF
+router.get('/download/:billId', protect, downloadBillPDF);
+
+// ✅ Protected: Download payment receipt as PDF
+router.get('/download-receipt/:billId/:paymentIndex', protect, downloadPaymentReceiptPDF);
 
 module.exports = router;

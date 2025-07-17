@@ -3,6 +3,9 @@ const jwt = require('jsonwebtoken');
 
 // Generate Token
 const generateToken = (user) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is not set');
+  }
   return jwt.sign(
     { id: user._id, role: user.role },
     process.env.JWT_SECRET,
@@ -12,7 +15,7 @@ const generateToken = (user) => {
 
 // 👉 Register (Tenant or Landlord)
 exports.registerUser = async (req, res) => {
-  const { name, email, password, primaryPhoneNumber, secondaryPhoneNumber, nationalID, role, buildingName, dateMovedIn } = req.body;
+  const { name, email, password, primaryPhoneNumber, secondaryPhoneNumber, nationalID, role, buildingName, dateMovedIn, apartmentName, rentAmount } = req.body;
 
   try {
     const existingUser = await User.findOne({ email });
@@ -27,7 +30,9 @@ exports.registerUser = async (req, res) => {
       nationalID,
       role,
       buildingName,
-      dateMovedIn
+      dateMovedIn,
+      apartmentName,
+      rentAmount: role === 'Landlord' ? rentAmount : 0
     });
 
     const token = generateToken(newUser);
@@ -37,7 +42,8 @@ exports.registerUser = async (req, res) => {
         id: newUser._id,
         name: newUser.name,
         email: newUser.email,
-        role: newUser.role
+        role: newUser.role,
+        apartmentName: newUser.apartmentName
       },
       token
     });
@@ -64,7 +70,8 @@ exports.loginUser = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        apartmentName: user.apartmentName
       },
       token
     });
@@ -77,7 +84,7 @@ exports.loginUser = async (req, res) => {
 // 👉 Get User Profile
 exports.getUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
+    const user = await User.findById(req.user._id).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     res.status(200).json(user);
@@ -86,11 +93,96 @@ exports.getUserProfile = async (req, res) => {
   }
 };
 
-// 👉 Get All Tenants (For Landlord/Admin)
+// 👉 Debug: Get all users (for debugging)
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find({}).select('-password');
+    console.log('📊 All users in database:');
+    users.forEach(user => {
+      console.log(`   - ${user.name} (${user.role}) - Apartment: ${user.apartmentName}`);
+    });
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// 👉 Get All Tenants (For Landlord - same apartment only)
 exports.getAllTenants = async (req, res) => {
   try {
-    const tenants = await User.find({ role: 'Tenant' }).select('-password');
+    const currentUser = await User.findById(req.user._id);
+    
+    if (!currentUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!currentUser.apartmentName) {
+      return res.status(400).json({ message: 'User has no apartment assigned' });
+    }
+
+    let tenants;
+    if (currentUser.role === 'Landlord') {
+      // Landlord can only see tenants in their apartment
+      tenants = await User.find({ 
+        role: 'Tenant',
+        apartmentName: new RegExp(`^${currentUser.apartmentName}$`, 'i')
+      }).select('-password');
+    } else {
+      // Admin or other roles can see all tenants
+      tenants = await User.find({ role: 'Tenant' }).select('-password');
+    }
+
     res.status(200).json(tenants);
+  } catch (error) {
+    console.error('❌ Error in getAllTenants:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// 👉 Get All Landlords (For Tenant - same apartment only)
+exports.getAllLandlords = async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.user._id);
+    
+    if (!currentUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    let landlords;
+    if (currentUser.role === 'Tenant') {
+      // Tenant can only see landlord in their apartment
+      landlords = await User.find({ 
+        role: 'Landlord',
+        apartmentName: new RegExp(currentUser.apartmentName, 'i')
+      }).select('-password');
+    } else {
+      // Admin or other roles can see all landlords
+      landlords = await User.find({ role: 'Landlord' }).select('-password');
+    }
+
+    res.status(200).json(landlords);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// 👉 Update Rent Amount (Landlord only)
+exports.updateRentAmount = async (req, res) => {
+  try {
+    const { rentAmount } = req.body;
+    const currentUser = await User.findById(req.user._id);
+
+    if (!currentUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (currentUser.role !== 'Landlord') {
+      return res.status(403).json({ message: 'Only landlords can set rent amount' });
+    }
+
+    await User.findByIdAndUpdate(req.user._id, { rentAmount });
+
+    res.status(200).json({ message: 'Rent amount updated successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
