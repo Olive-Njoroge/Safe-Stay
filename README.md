@@ -109,4 +109,4 @@ npm start
 ---
 
 ## 📸 Screenshots
-![Login Page](assets/login.png)
+![Login Page](src/assets/login.png)
