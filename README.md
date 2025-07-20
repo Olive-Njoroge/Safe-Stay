@@ -104,9 +104,3 @@ npm run dev
 ```bash
 cd client
 npm start
-```
-
----
-
-## 📸 Screenshots
-![Login Page](src/assets/login.png)
