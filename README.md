@@ -109,32 +109,4 @@ npm start
 ---
 
 ## 📸 Screenshots
-
-> *(Insert screenshots of login page, dashboard, billing section, tenant list, etc.)*
-
----
-
-## 🧠 Future Enhancements
-
-* Role-based permissions for property managers
-* Analytics dashboard (monthly income, late payments, etc.)
-* SMS/email reminders
-* Mobile-responsive or mobile app version
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Fork this repo and submit a pull request with your improvements. All ideas that make SafeStay better are appreciated.
-
----
-
-## 📄 License
-
-MIT License — feel free to use and modify for your own rental systems.
-
----
-
-## 💬 Contact
-
-Built with ❤️ by [Olive Njoroge](https://github.com/Olive-Njoroge)
+![Login Page](assets/login.png)
