@@ -7,7 +7,7 @@ const handleSocketConnection = (io) => {
 
     socket.on("joinRoom", async ({ username, roomId }) => {
       const user = await User.findOneAndUpdate(
-        { name: username },
+        { name: username }, // use `name` instead of `username`
         { socketId: socket.id, isOnline: true },
         { new: true }
       );
@@ -15,12 +15,9 @@ const handleSocketConnection = (io) => {
       if (!user) return;
 
       socket.join(roomId);
-      socket.join("global");
-      
-      // Emit to global room so all users see online status
-      io.to("global").emit("userJoined", { user, roomId: "global" });
+      io.to(roomId).emit("userJoined", { user, roomId });
 
-      // Typing handlers
+      // Typing
       socket.on("typing", () => {
         socket.to(roomId).emit("typing", username);
       });
@@ -29,51 +26,28 @@ const handleSocketConnection = (io) => {
         socket.to(roomId).emit("stopTyping", username);
       });
 
-      // Send message - FIXED to handle all parameters from frontend
-      socket.on("sendMessage", async ({ content, receiverName, senderName, senderId, receiverId }) => {
+      // Send message (broadcast only, don't create duplicate in DB)
+      socket.on("sendMessage", async ({ content, receiverName, senderName, senderId, receiverId, messageId }) => {
         try {
-          console.log("📨 Socket message received:", { content, receiverName, senderName, senderId, receiverId });
-          
           const receiver = await User.findOne({ name: receiverName });
-          if (!receiver) {
-            console.error("❌ Receiver not found:", receiverName);
-            return;
-          }
+          
+          if (!receiver) return;
 
-          // Create message in database
-          const message = await Chat.create({
-            senderName: senderName || user.name,
-            receiverName: receiver.name,
-            senderId: senderId || user._id,
-            receiverId: receiverId || receiver._id,
-            senderRole: user.role,
-            receiverRole: receiver.role,
-            apartmentName: user.apartmentName,
-            message: content
-          });
+          // Just broadcast the message, don't create it in DB (already created by API)
+          const messageData = {
+            _id: messageId,
+            senderName,
+            receiverName,
+            senderId: { _id: senderId, name: senderName },
+            receiverId: { _id: receiverId, name: receiverName },
+            message: content,
+            createdAt: new Date(),
+            timestamp: new Date()
+          };
 
-          // Populate the message with sender info to match frontend expectations
-          const populatedMessage = await Chat.findById(message._id)
-            .populate('senderId', 'name role')
-            .populate('receiverId', 'name role');
-
-          console.log("✅ Message created and populated:", populatedMessage);
-
-          // Send to both users
-          // Don't send to sender (they already have it from API response)
-          // Only send to receiver
-          if (receiver.socketId && receiver.socketId !== socket.id) {
-            console.log("📤 Sending to receiver socket:", receiver.socketId);
-            io.to(receiver.socketId).emit("newMessage", populatedMessage);
-          } else {
-            console.log("⚠️ Receiver not online or same as sender");
-          }
-
-          // Also emit to global room for any other listeners
-          socket.to("global").emit("newMessage", populatedMessage);
-
+          io.to(roomId).emit("newMessage", messageData);
         } catch (error) {
-          console.error("❌ Message sending error:", error);
+          console.error("Message broadcasting error:", error);
         }
       });
 
@@ -86,7 +60,7 @@ const handleSocketConnection = (io) => {
         );
 
         if (offlineUser) {
-          io.to("global").emit("userOffline", offlineUser.name);
+          io.emit("userOffline", offlineUser.name);
         }
       });
     });

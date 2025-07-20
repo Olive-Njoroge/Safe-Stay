@@ -146,7 +146,8 @@ exports.deleteRule = async (req, res) => {
       return res.status(404).json({ message: 'Rules not found' });
     }
 
-    apartmentRules.rules.id(ruleId).remove();
+    // Remove the rule by filtering out the rule with the matching _id
+    apartmentRules.rules = apartmentRules.rules.filter(rule => rule._id.toString() !== ruleId);
     await apartmentRules.save();
 
     res.status(200).json({

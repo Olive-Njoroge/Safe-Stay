@@ -1,5 +1,5 @@
 const express = require('express');
-const { createChat, getAllChats, getChatsByNationalID, getMyChats, getConversation, getMyConversations, getAvailableChatPartners } = require('../controllers/chatController');
+const { createChat, getAllChats, getChatsByNationalID, getMyChats, getConversation, getMyConversations, getAvailableChatPartners, debugUsers } = require('../controllers/chatController');
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -24,5 +24,8 @@ router.get('/', protect, getAllChats);
 
 // ✅ Get chats by user National ID (Protected)
 router.get('/user/:nationalID', protect, getChatsByNationalID);
+
+// ✅ Debug endpoint to check users and apartments (Protected)
+router.get('/debug/users', protect, debugUsers);
 
 module.exports = router;
