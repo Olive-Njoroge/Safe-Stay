@@ -4,6 +4,14 @@
 
 ---
 
+## 🎥 Project Demo
+
+[▶️ Watch Safe Stay Demo Video](https://drive.google.com/file/d/1HT8Gbsf-zI5hgNSRvPKd4v7IQjUYf-22/view)
+
+This walkthrough highlights the main features of **SafeStay**, including user authentication, tenant management, billing, legal awareness, and overall app flow — all explained with a clear voiceover.
+
+---
+
 ## 🌟 Features
 
 ### 🔑 Authentication
@@ -34,7 +42,7 @@
 
 ### Frontend
 - React
-- Tailwind CSS (or your chosen styling approach)
+- Tailwind CSS
 - Axios (for API requests)
 
 ### Backend
@@ -43,7 +51,7 @@
 - MongoDB (Mongoose)
 
 ### DevOps / Deployment
-- Render / Vercel / Railway (as preferred)
+- Render and Vercel
 - GitHub for version control
 
 ---
@@ -130,4 +138,3 @@ MIT License — feel free to use and modify for your own rental systems.
 ## 💬 Contact
 
 Built with ❤️ by [Olive Njoroge](https://github.com/Olive-Njoroge)
-
