@@ -108,7 +108,22 @@ npm start
 ```
 
 ## 📸 Screenshots
+
+### 🔐 Authentication Screens
+
+**Login Page**  
 ![Login Page](./client/src/assets/login.png)
-![Signup Page](client/src/assets/signup.png)
-![Landlord Dashboard](client/src/assets/landlordDashboard.png)
-![Tenant Dashboard](client/src/assets/tenantDashboard.png)
+
+**Signup Page**  
+![Signup Page](./client/src/assets/signup.png)
+
+---
+
+### 📊 Dashboard Screens
+
+**Landlord Dashboard**  
+![Landlord Dashboard](./client/src/assets/landlordDashboard.png)
+
+**Tenant Dashboard**  
+![Tenant Dashboard](./client/src/assets/tenantDashboard.png)
+
