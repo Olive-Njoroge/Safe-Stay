@@ -98,11 +98,21 @@ const Rules = () => {
     }
   };
 
-  const handleDeleteRule = async (ruleId) => {
+  const handleDeleteRule = async (ruleId, ruleTitle) => {
+    // Add confirmation dialog
+    if (!window.confirm(`Are you sure you want to delete the rule "${ruleTitle}"? This action cannot be undone.`)) {
+      return;
+    }
+    
     try {
+      console.log('🗑️ Deleting rule with ID:', ruleId);
       await deleteRule(ruleId);
+      console.log('✅ Rule deleted successfully');
+      
       // Refresh the rules list
       const rulesResponse = await getRules();
+      console.log('📋 Refreshed rules:', rulesResponse.data);
+      
       if (rulesResponse.data && rulesResponse.data.rules) {
         setRules(rulesResponse.data.rules);
       } else if (Array.isArray(rulesResponse.data)) {
@@ -110,9 +120,12 @@ const Rules = () => {
       } else {
         setRules([]);
       }
+      
+      alert('Rule deleted successfully!');
     } catch (error) {
-      console.error('Error deleting rule:', error);
-      alert('Failed to delete rule. Please try again.');
+      console.error('❌ Error deleting rule:', error);
+      console.error('❌ Error response:', error.response?.data);
+      alert(`Failed to delete rule: ${error.response?.data?.message || error.message}`);
     }
   };
 
@@ -220,7 +233,7 @@ const Rules = () => {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDeleteRule(rule._id)}
+                        onClick={() => handleDeleteRule(rule._id, rule.title)}
                         className="text-red-600 hover:text-red-800 text-sm"
                       >
                         Delete

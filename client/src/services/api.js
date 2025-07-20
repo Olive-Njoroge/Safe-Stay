@@ -1,8 +1,8 @@
 import axios from 'axios';
 import io from 'socket.io-client';
 
-// Base URLs
-const backendBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+// Base URL configuration
+const backendBaseUrl = "https://safestayback.onrender.com";
 const API_BaseUrl = `${backendBaseUrl}/api`;
 
 // Axios instance
@@ -70,12 +70,12 @@ export const updateComplaintStatus = (complaintId, statusData) => API.put(`/comp
 export const addLandlordNote = (complaintId, note) => API.post(`/complaints/${complaintId}/note`, { note });
 
 // ✅ Chat APIs
-export const getChats = () => API.get("/chats/me");
 export const getMyConversations = () => API.get("/chats/conversations");
 export const getAvailableChatPartners = () => API.get("/chats/partners");
-export const getConversation = (userId1, userId2) => API.get(`/chats/conversation/${userId1}/${userId2}`);
+export const getConversation = (currentUserId, partnerId) => API.get(`/chats/conversation/${currentUserId}/${partnerId}`);
 export const createChat = (messageData) => API.post("/chats", messageData);
 export const getChatsByNationalID = (nationalID) => API.get(`/chats/user/${nationalID}`);
+export const debugUsers = () => API.get("/chats/debug/users");
 
 // ✅ Rules APIs
 export const getRules = () => API.get("/rules");

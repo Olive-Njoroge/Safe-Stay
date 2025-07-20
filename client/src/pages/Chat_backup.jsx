@@ -42,20 +42,17 @@ const Chat = () => {
     });
 
     socket.on('newMessage', (message) => {
-      console.log('🔔 New message received via socket:', message);
+      console.log('🔔 New message received:', message);
       
-      // Only add message if it's from someone else (not the current user)
-      if (message.senderId._id !== user.id) {
+      if (message.senderId._id !== user._id) {
         setMessages(prev => {
-          // Check for duplicates by message ID
-          const isDuplicate = prev.some(msg => msg._id === message._id);
-          if (isDuplicate) {
-            console.log('🔄 Duplicate message ignored:', message._id);
-            return prev;
-          }
-          
-          console.log('✅ Adding new socket message:', message._id);
-          return [...prev, message];
+          const isDuplicate = prev.some(msg => 
+            msg._id === message._id || 
+            (msg.message === message.message && 
+             msg.senderId === message.senderId && 
+             Math.abs(new Date(msg.createdAt) - new Date(message.createdAt)) < 1000)
+          );
+          return isDuplicate ? prev : [...prev, message];
         });
         
         setTimeout(() => {
@@ -63,7 +60,6 @@ const Chat = () => {
         }, 100);
       }
       
-      // Update conversations
       setConversations(prev => prev.map(conv => {
         const isRelevantConversation = 
           conv.partnerId === message.senderId._id || 
@@ -75,7 +71,7 @@ const Chat = () => {
         return conv;
       }));
 
-      if (message.senderId._id !== user.id && Notification.permission === 'granted') {
+      if (message.senderId._id !== user._id && Notification.permission === 'granted') {
         new Notification(`New message from ${message.senderName}`, {
           body: message.message,
           icon: '/favicon.ico'
@@ -100,11 +96,6 @@ const Chat = () => {
         console.log('🎬 Current user:', user?.name);
         console.log('🏢 User apartment:', user?.apartmentName);
         console.log('👤 User role:', user?.role);
-        console.log('🆔 User ID field check:', user?.id);
-        console.log('🆔 User _ID field check:', user?._id);
-        console.log('🆔 User userId field check:', user?.userId);
-        console.log('📦 Raw user object:', JSON.stringify(user, null, 2));
-        console.log('📦 Raw localStorage user:', localStorage.getItem('user'));
 
         // Force API call to get available chat partners first
         console.log('🚀 About to call getAvailableChatPartners...');
@@ -150,8 +141,6 @@ const Chat = () => {
         // Auto-select first conversation if available and no conversation is selected
         if (conversationsList.length > 0 && !selectedConversation) {
           console.log('🎯 Auto-selecting first conversation');
-          console.log('🎯 User object for auto-select:', user);
-          console.log('🎯 User ID for auto-select:', user?._id);
           const firstConversation = conversationsList[0];
           setSelectedConversation(firstConversation);
           await loadConversationMessages(firstConversation.partnerId);
@@ -180,58 +169,10 @@ const Chat = () => {
     try {
       setMessagesLoading(true);
       console.log('🔄 Loading messages for partner:', partnerId);
-      console.log('🔄 Current user object:', user);
+      console.log('🔄 Current user ID:', user._id);
       
-      // Get user ID with multiple fallbacks
-      let userId = null;
-      
-      // Try different sources for user ID
-      if (user?.id) {
-        userId = user.id;
-        console.log('✅ Got userId from user.id:', userId);
-      } else if (user?._id) {
-        userId = user._id;
-        console.log('✅ Got userId from user._id:', userId);
-      } else {
-        // Try to get fresh user data from localStorage
-        try {
-          const userFromStorage = JSON.parse(localStorage.getItem('user') || '{}');
-          if (userFromStorage.id) {
-            userId = userFromStorage.id;
-            console.log('✅ Got userId from localStorage.id:', userId);
-          } else if (userFromStorage._id) {
-            userId = userFromStorage._id;
-            console.log('✅ Got userId from localStorage._id:', userId);
-          }
-        } catch (e) {
-          console.error('Failed to parse user from localStorage:', e);
-        }
-      }
-      
-      // Final fallback using name mapping (for testing)
-      if (!userId && user?.name) {
-        const nameToIdMap = {
-          'charlse': '687813666e16467e1700e3c6',
-          'muthaiga': '687813296e16467e1700e38f'
-        };
-        userId = nameToIdMap[user.name];
-        if (userId) {
-          console.log('🔧 TEMP: Using name-based fallback ID for', user.name, ':', userId);
-        }
-      }
-      
-      if (!userId) {
-        console.error('❌ User ID is missing! Cannot load conversation');
-        console.error('❌ Available user data:', { user, localStorage: localStorage.getItem('user') });
-        alert('Error: User ID is missing. Please try logging out and logging back in.');
-        setMessages([]);
-        return;
-      }
-      
-      console.log('✅ Loading conversation with user ID:', userId, 'and partner ID:', partnerId);
-      const response = await getConversation(userId, partnerId);
+      const response = await getConversation(partnerId);
       console.log('💬 Conversation messages response:', response.data);
-      console.log('💬 Number of messages:', response.data?.length || 0);
       setMessages(response.data || []);
       
       setTimeout(() => {
@@ -261,7 +202,7 @@ const Chat = () => {
       const optimisticMessage = {
         _id: Date.now().toString(),
         message: messageText,
-        senderId: user.id,
+        senderId: user._id,
         receiverId: selectedConversation.partnerId,
         createdAt: new Date().toISOString(),
         isOptimistic: true
@@ -283,20 +224,14 @@ const Chat = () => {
         const response = await createChat(messageData);
         const newMessageObj = response.data.chat;
         
-        // Only emit to socket if we got a new message (not a duplicate)
-        if (response.data.message !== 'Message already exists') {
-          // Emit to socket for real-time broadcasting (don't create duplicate in DB)
-          socket.emit('sendMessage', {
-            content: messageText,
-            receiverName: selectedConversation.partnerName,
-            senderName: user.name,
-            senderId: user.id,
-            receiverId: selectedConversation.partnerId,
-            messageId: newMessageObj._id
-          });
-        }
+        socket.emit('sendMessage', {
+          content: messageText,
+          receiverName: selectedConversation.partnerName,
+          senderName: user.name,
+          senderId: user._id,
+          receiverId: selectedConversation.partnerId
+        });
         
-        // Replace optimistic message with actual message from server
         setMessages(prev => prev.map(msg => 
           msg._id === optimisticMessage._id ? newMessageObj : msg
         ));
@@ -315,10 +250,7 @@ const Chat = () => {
         setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
         setNewMessage(messageText);
       } finally {
-        // Add a small delay to prevent rapid multiple clicks
-        setTimeout(() => {
-          setSending(false);
-        }, 500);
+        setSending(false);
       }
     }
   };
@@ -483,7 +415,7 @@ const Chat = () => {
                     const isOnline = onlineUsers.some(u => u.name === user.name);
                     return (
                       <button
-                        key={user.id || user._id}
+                        key={user._id}
                         onClick={() => {
                           startNewConversation(user);
                           setShowUserList(false);
@@ -543,7 +475,7 @@ const Chat = () => {
                   </div>
                 ) : (
                   messages.map((message, index) => {
-                    const isCurrentUser = message.senderId?._id === user.id || message.senderId === user.id;
+                    const isCurrentUser = message.senderId?._id === user._id || message.senderId === user._id;
                     const showTimestamp = index === 0 || 
                       (new Date(message.createdAt || message.timestamp) - new Date(messages[index - 1]?.createdAt || messages[index - 1]?.timestamp)) > 300000;
                     
