@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "cd client && npm install && npm run build",
-    "install": "cd client && npm install"
+    "build": "npm --prefix client install && npm --prefix client run build",
+    "install": "npm --prefix client install"
   },
   "workspaces": [
     "client",
