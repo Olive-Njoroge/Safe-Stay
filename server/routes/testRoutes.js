@@ -1,7 +1,6 @@
 const express = require('express');
 const User = require('../models/User');
 const Bill = require('../models/Bills');
-const Apartment = require('../models/Apartment');
 
 const router = express.Router();
 
@@ -11,17 +10,6 @@ router.post('/setup-data', async (req, res) => {
     // Clear existing test data
     await User.deleteMany({ email: { $regex: '@test.com$' } });
     await Bill.deleteMany({ apartmentName: 'Test Apartment A' });
-    await Apartment.deleteMany({ name: 'Test Apartment A' });
-
-    // Create test apartment
-    const apartment = new Apartment({
-      name: 'Test Apartment A',
-      location: 'Nairobi, Kenya',
-      totalUnits: 10,
-      rentAmount: 25000,
-      description: 'Test apartment for USSD functionality'
-    });
-    await apartment.save();
 
     // Create test landlord
     const landlord = new User({
@@ -46,7 +34,6 @@ router.post('/setup-data', async (req, res) => {
       nationalID: 'TN12345678',
       role: 'Tenant',
       apartmentName: 'Test Apartment A',
-      apartmentId: apartment._id,
       dateMovedIn: new Date('2024-01-01'),
       rentAmount: 25000
     });
@@ -95,7 +82,6 @@ router.post('/setup-data', async (req, res) => {
       success: true,
       message: 'Test data created successfully',
       data: {
-        apartment: apartment._id,
         landlord: landlord._id,
         tenant: tenant._id,
         billsCreated: bills.length,
