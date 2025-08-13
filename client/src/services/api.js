@@ -8,10 +8,13 @@ const API_BaseUrl = `${backendBaseUrl}/api`;
 // Axios instance with performance optimizations
 const API = axios.create({
   baseURL: API_BaseUrl,
-  timeout: 10000, // 10 second timeout
+  timeout: 30000, // Increase timeout to 30 seconds for deployment
   headers: {
     'Content-Type': 'application/json',
-  }
+  },
+  // Add retry configuration
+  retry: 3,
+  retryDelay: 1000,
 });
 
 // Request interceptor with caching
@@ -38,6 +41,17 @@ API.interceptors.request.use((config) => {
 API.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Handle network errors
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      console.error('Request timeout - backend might be sleeping');
+      // You can show a user-friendly message here
+    }
+    
+    if (error.code === 'ERR_NETWORK') {
+      console.error('Network error - check connection');
+      // You can show a user-friendly message here
+    }
+    
     // Handle common error cases
     if (error.response?.status === 401) {
       // Token expired or invalid
@@ -48,6 +62,16 @@ API.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// ✅ Wake up backend function (for Render free tier)
+export const wakeUpBackend = async () => {
+  try {
+    await API.get('/health', { timeout: 60000 }); // 1 minute timeout for wake up
+    console.log('Backend is awake');
+  } catch (error) {
+    console.error('Failed to wake up backend:', error);
+  }
+};
 
 // ✅ Auth APIs
 export const registerUser = (userData) => API.post("/auth/register", userData);
