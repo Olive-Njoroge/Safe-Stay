@@ -28,6 +28,9 @@ const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const rulesRoutes = require('./routes/rulesRoute');
 const apartmentRoutes = require('./routes/apartmentRoutes');
+const ussdRoutes = require('./routes/ussdRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+const testRoutes = require('./routes/testRoutes');
 
 app.use('/api/bills', billRoutes);
 app.use('/api/complaints', complaintRoutes);
@@ -36,11 +39,39 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/rules', rulesRoutes);
 app.use('/api/apartments', apartmentRoutes);
+app.use('/api/ussd', ussdRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/test', testRoutes);
 
 // Test Route
 app.get('/', (req, res) => {
   res.send('Home Management Backend Running');
 });
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    ussdCode: process.env.USSD_CODE || 'Not configured'
+  });
+});
+
+// Keep-alive for Render free tier
+if (process.env.NODE_ENV === 'production') {
+  const keepAlive = () => {
+    const url = process.env.BASE_URL || 'https://safestay-api.onrender.com';
+    fetch(`${url}/health`)
+      .then(res => console.log(`Keep-alive ping: ${res.status}`))
+      .catch(err => console.log('Keep-alive failed:', err.message));
+  };
+  
+  // Ping every 14 minutes to prevent sleeping
+  setInterval(keepAlive, 14 * 60 * 1000);
+  console.log('🔄 Keep-alive enabled for production');
+}
 
 // Create HTTP Server & Socket.IO
 const server = http.createServer(app);
@@ -57,6 +88,8 @@ chatSocket(io);  // Call the socket logic
 
 // Start Server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📡 USSD Code: ${process.env.USSD_CODE || 'Not configured'}`);
 });
