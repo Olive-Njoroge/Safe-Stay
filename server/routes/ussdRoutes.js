@@ -3,7 +3,10 @@ const USSDController = require('../controllers/ussdController');
 
 const router = express.Router();
 
-// USSD callback endpoint
+// USSD callback endpoint - Direct route for Africa's Talking
+router.post('/', USSDController.handleUSSD);
+
+// Alternative callback endpoint
 router.post('/callback', USSDController.handleUSSD);
 
 // Test endpoint to simulate USSD request
