@@ -1,0 +1,13 @@
+{
+  "name": "safe-stay",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd client && npm install && npm run build",
+    "install": "cd client && npm install"
+  },
+  "workspaces": [
+    "client",
+    "server"
+  ]
+}
