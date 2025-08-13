@@ -24,9 +24,16 @@ app.use(compression()); // Compress all responses
 app.use(express.json({ limit: '5mb' })); // Optimize JSON parsing
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://safe-stay-frontend.onrender.com', 'https://safestay.onrender.com'] 
+    ? [
+        'https://safe-stay-frontend.onrender.com', 
+        'https://safestay.onrender.com',
+        'https://safe-stay-pink.vercel.app',
+        /^https:\/\/.*\.vercel\.app$/  // Allow all Vercel deployments
+      ] 
     : '*',
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Cache control headers for better performance
@@ -66,8 +73,13 @@ app.get('/', (req, res) => {
   res.send('Home Management Backend Running');
 });
 
-// Health check endpoint
+// Health check endpoint with explicit CORS
 app.get('/health', (req, res) => {
+  // Add explicit CORS headers for health check
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
@@ -80,6 +92,14 @@ app.get('/health', (req, res) => {
       cpuUsage: process.cpuUsage()
     }
   });
+});
+
+// Handle preflight OPTIONS requests for health endpoint
+app.options('/health', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.status(200).send();
 });
 
 // Keep-alive for Render free tier (optimized)
