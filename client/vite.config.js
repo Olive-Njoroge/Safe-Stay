@@ -20,7 +20,9 @@ export default defineConfig({
       }
     },
     // Reduce chunk size warnings threshold
-    chunkSizeWarningLimit: 1000
+    chunkSizeWarningLimit: 1000,
+    // Copy public files including _redirects
+    copyPublicDir: true
   },
   server: {
     // Optimize dev server
