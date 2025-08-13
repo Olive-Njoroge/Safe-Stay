@@ -1,13 +1,13 @@
 {
-  "name": "safe-stay",
+  "name": "safe-stay-frontend",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "npm --prefix client install && npm --prefix client run build",
-    "install": "npm --prefix client install"
+    "dev": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "start": "cd client && npm run preview",
+    "lint": "cd client && npm run lint"
   },
-  "workspaces": [
-    "client",
-    "server"
-  ]
+  "dependencies": {},
+  "devDependencies": {}
 }

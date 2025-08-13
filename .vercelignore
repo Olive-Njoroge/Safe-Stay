@@ -1,4 +1,7 @@
 server/
 *.md
 .git/
+node_modules/
+.env*
+*.log
 render.yaml

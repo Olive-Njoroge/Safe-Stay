@@ -76,9 +76,18 @@ export default function Login() {
   // Fetch available apartments when component mounts or switches to register mode
   useEffect(() => {
     const initializeComponent = async () => {
-      // Wake up backend first
+      // Wake up backend first with user feedback
       console.log('⏰ Waking up backend...');
-      await wakeUpBackend();
+      setError('Starting up server, please wait...');
+      
+      const backendReady = await wakeUpBackend();
+      
+      if (!backendReady) {
+        setError('Server is temporarily unavailable. Please try again in a few moments.');
+        return;
+      }
+      
+      setError(''); // Clear any startup messages
       
       if (!isLogin) {
         console.log('🏠 Fetching available apartments...');
@@ -166,6 +175,18 @@ export default function Login() {
           return;
         }
       }
+    }
+    
+    // Ensure backend is ready before proceeding
+    if (!isLogin) {
+      setError('Ensuring server connection...');
+      const backendReady = await wakeUpBackend();
+      if (!backendReady) {
+        setError('Server connection failed. Please refresh the page and try again.');
+        setIsLoading(false);
+        return;
+      }
+      setError('');
     }
     
     try {

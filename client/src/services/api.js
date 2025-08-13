@@ -14,17 +14,26 @@ const API = axios.create({
   },
 });
 
-// Retry function for failed requests
-const retryRequest = async (fn, retries = 3, delay = 2000) => {
-  try {
-    return await fn();
-  } catch (error) {
-    if (retries > 0 && (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK' || error.response?.status >= 500)) {
-      console.log(`Retrying request... ${retries} attempts left`);
+// Retry function for failed requests with exponential backoff
+const retryRequest = async (fn, retries = 5, delay = 1000) => {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      const isNetworkError = error.code === 'ECONNABORTED' || 
+                            error.code === 'ERR_NETWORK' || 
+                            error.message.includes('Network Error') ||
+                            error.response?.status >= 500 ||
+                            !error.response;
+                            
+      if (i === retries || !isNetworkError) {
+        throw error;
+      }
+      
+      console.log(`Network error, retrying... (${i + 1}/${retries + 1}) after ${delay}ms`);
       await new Promise(resolve => setTimeout(resolve, delay));
-      return retryRequest(fn, retries - 1, delay * 1.5);
+      delay *= 1.5; // Exponential backoff
     }
-    throw error;
   }
 };
 
@@ -76,11 +85,14 @@ API.interceptors.response.use(
 
 // ✅ Wake up backend function (for Render free tier)
 export const wakeUpBackend = async () => {
+  console.log('🚀 Waking up backend server...');
   try {
-    await retryRequest(() => API.get('/health'), 5, 3000); // Extra retries for wake up
-    console.log('Backend is awake');
+    await retryRequest(() => API.get('/health'), 10, 2000); // 10 retries for wake up
+    console.log('✅ Backend is awake and ready');
+    return true;
   } catch (error) {
-    console.error('Failed to wake up backend:', error);
+    console.error('❌ Failed to wake up backend after multiple attempts:', error);
+    return false;
   }
 };
 
