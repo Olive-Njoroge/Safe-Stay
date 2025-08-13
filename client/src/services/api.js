@@ -87,12 +87,30 @@ API.interceptors.response.use(
 export const wakeUpBackend = async () => {
   console.log('🚀 Waking up backend server...');
   try {
-    await retryRequest(() => API.get('/health'), 10, 2000); // 10 retries for wake up
+    // Use the correct health endpoint (not /api/health)
+    const healthAPI = axios.create({
+      baseURL: backendBaseUrl, // Use base URL without /api
+      timeout: 60000,
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    await retryRequest(() => healthAPI.get('/health'), 10, 2000); // 10 retries for wake up
     console.log('✅ Backend is awake and ready');
     return true;
   } catch (error) {
-    console.error('❌ Failed to wake up backend after multiple attempts:', error);
-    return false;
+    console.warn('⚠️ Primary health check failed, trying backup endpoint...');
+    
+    // Backup: try a simple API endpoint
+    try {
+      await retryRequest(() => API.get('/apartments/available'), 3, 1000);
+      console.log('✅ Backend is responsive via backup check');
+      return true;
+    } catch (backupError) {
+      console.error('❌ Both primary and backup health checks failed');
+      console.error('Primary error:', error.message);
+      console.error('Backup error:', backupError.message);
+      return false;
+    }
   }
 };
 
