@@ -1,5 +1,19 @@
 const express = require('express');
-const mongoose = require('mongoose');
+const mongoose = require// Keep-alive for Render free tier (temporarily disabled)
+/*
+if (process.env.NODE_ENV === 'production') {
+  const keepAlive = () => {
+    const url = process.env.BASE_URL || 'https://safestay-api.onrender.com';
+    fetch(`${url}/health`)
+      .then(res => console.log(`Keep-alive ping: ${res.status}`))
+      .catch(err => console.log('Keep-alive failed:', err.message));
+  };
+  
+  // Ping every 14 minutes to prevent sleeping
+  setInterval(keepAlive, 14 * 60 * 1000);
+  console.log('🔄 Keep-alive enabled for production');
+}
+*/
 const dotenv = require('dotenv');
 const http = require('http');  // <-- NEW
 const { Server } = require('socket.io');  // <-- NEW
@@ -39,9 +53,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/rules', rulesRoutes);
 app.use('/api/apartments', apartmentRoutes);
-app.use('/api/ussd', ussdRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/test', testRoutes);
+// app.use('/api/ussd', ussdRoutes);
+// app.use('/api/payments', paymentRoutes);
+// app.use('/api/test', testRoutes);
 
 // Test Route
 app.get('/', (req, res) => {
