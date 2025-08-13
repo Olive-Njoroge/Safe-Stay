@@ -87,13 +87,13 @@ API.interceptors.response.use(
 export const wakeUpBackend = async () => {
   console.log('🚀 Waking up backend server...');
   try {
-    // Use the correct health endpoint with proper CORS handling
+    // Use the correct health endpoint WITHOUT invalid CORS headers
     const healthAPI = axios.create({
       baseURL: backendBaseUrl, // Use base URL without /api
       timeout: 60000,
       headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        'Content-Type': 'application/json'
+        // ❌ REMOVED: 'Access-Control-Allow-Origin': '*' - This is invalid in requests!
       }
     });
     
@@ -164,13 +164,13 @@ export const updateComplaint = (complaintId, statusData) => API.put(`/complaints
 export const updateComplaintStatus = (complaintId, statusData) => API.put(`/complaints/${complaintId}`, statusData);
 export const addLandlordNote = (complaintId, note) => API.post(`/complaints/${complaintId}/note`, { note });
 
-// ✅ Chat APIs
-export const getMyConversations = () => API.get("/chats/conversations");
-export const getAvailableChatPartners = () => API.get("/chats/partners");
-export const getConversation = (currentUserId, partnerId) => API.get(`/chats/conversation/${currentUserId}/${partnerId}`);
-export const createChat = (messageData) => API.post("/chats", messageData);
-export const getChatsByNationalID = (nationalID) => API.get(`/chats/user/${nationalID}`);
-export const debugUsers = () => API.get("/chats/debug/users");
+// ✅ Chat APIs with retry
+export const getMyConversations = () => retryRequest(() => API.get("/chats/conversations"));
+export const getAvailableChatPartners = () => retryRequest(() => API.get("/chats/partners"));
+export const getConversation = (currentUserId, partnerId) => retryRequest(() => API.get(`/chats/conversation/${currentUserId}/${partnerId}`));
+export const createChat = (messageData) => retryRequest(() => API.post("/chats", messageData));
+export const getChatsByNationalID = (nationalID) => retryRequest(() => API.get(`/chats/user/${nationalID}`));
+export const debugUsers = () => retryRequest(() => API.get("/chats/debug/users"));
 
 // ✅ Rules APIs
 export const getRules = () => API.get("/rules");

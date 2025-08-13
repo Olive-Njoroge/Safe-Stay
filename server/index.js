@@ -23,18 +23,69 @@ const app = express();
 app.use(compression()); // Compress all responses
 app.use(express.json({ limit: '5mb' })); // Optimize JSON parsing
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? [
-        'https://safe-stay-frontend.onrender.com', 
-        'https://safestay.onrender.com',
-        'https://safe-stay-pink.vercel.app',
-        /^https:\/\/.*\.vercel\.app$/  // Allow all Vercel deployments
-      ] 
-    : '*',
+  origin: function(origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'https://safe-stay-frontend.onrender.com', 
+      'https://safestay.onrender.com',
+      'https://safe-stay-pink.vercel.app'
+    ];
+    
+    // Check if origin is allowed or matches Vercel pattern
+    if (allowedOrigins.includes(origin) || /^https:\/\/.*\.vercel\.app$/.test(origin)) {
+      return callback(null, true);
+    }
+    
+    // In development, allow all origins
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    
+    // Otherwise reject
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Origin',
+    'X-Requested-With', 
+    'Content-Type', 
+    'Accept',
+    'Authorization',
+    'Cache-Control',
+    'X-Request-ID'
+  ],
+  exposedHeaders: ['set-cookie']
 }));
+
+// Additional CORS middleware for preflight requests
+app.use((req, res, next) => {
+  // Set CORS headers for all requests
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'https://safe-stay-frontend.onrender.com', 
+    'https://safestay.onrender.com',
+    'https://safe-stay-pink.vercel.app'
+  ];
+  
+  if (!origin || allowedOrigins.includes(origin) || /^https:\/\/.*\.vercel\.app$/.test(origin) || process.env.NODE_ENV !== 'production') {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  }
+  
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, X-Request-ID');
+  res.header('Access-Control-Expose-Headers', 'set-cookie');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  next();
+});
 
 // Cache control headers for better performance
 app.use((req, res, next) => {
