@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loginUser, registerUser, getAvailableApartments } from '../services/api';
+import { loginUser, registerUser, getAvailableApartments, wakeUpBackend } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 // Move these components outside to prevent recreation on every render
@@ -75,7 +75,11 @@ export default function Login() {
 
   // Fetch available apartments when component mounts or switches to register mode
   useEffect(() => {
-    const fetchApartments = async () => {
+    const initializeComponent = async () => {
+      // Wake up backend first
+      console.log('⏰ Waking up backend...');
+      await wakeUpBackend();
+      
       if (!isLogin) {
         console.log('🏠 Fetching available apartments...');
         setApartmentsLoading(true);
@@ -96,7 +100,7 @@ export default function Login() {
       }
     };
 
-    fetchApartments();
+    initializeComponent();
   }, [isLogin]);
 
   const handleChange = (e) => {
