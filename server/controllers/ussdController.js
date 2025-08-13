@@ -51,10 +51,17 @@ class USSDController {
         );
         endSession = true;
       } else {
-        // Route to appropriate handler based on current step
-        const result = await USSDController.routeRequest(user, session, lastInput, inputArray);
-        response = result.response;
-        endSession = result.endSession;
+        // Handle initial session (empty text)
+        if (text === '' || text === null || text === undefined) {
+          session.currentStep = 'main_menu';
+          response = await USSDController.showMainMenu(user);
+          endSession = false;
+        } else {
+          // Route to appropriate handler based on current step
+          const result = await USSDController.routeRequest(user, session, lastInput, inputArray);
+          response = result.response;
+          endSession = result.endSession;
+        }
       }
 
       // Handle session end
@@ -78,7 +85,14 @@ class USSDController {
     try {
       switch (session.currentStep) {
         case 'main_menu':
-          return { response: await USSDController.showMainMenu(user), endSession: false };
+          // If we have input, process the main menu choice
+          if (lastInput && lastInput !== '') {
+            session.currentStep = 'awaiting_main_choice';
+            return await USSDController.handleMainMenuChoice(lastInput, user, session);
+          } else {
+            // Show main menu
+            return { response: await USSDController.showMainMenu(user), endSession: false };
+          }
         
         case 'awaiting_main_choice':
           return await USSDController.handleMainMenuChoice(lastInput, user, session);
@@ -121,30 +135,35 @@ class USSDController {
   }
 
   static async showMainMenu(user) {
-    const pendingBills = await Bill.countDocuments({ 
-      tenant: user._id, 
-      status: { $in: ['Pending', 'Partial'] }
-    });
+    try {
+      const pendingBills = await Bill.countDocuments({ 
+        tenant: user._id, 
+        status: { $in: ['Pending', 'Partial'] }
+      });
 
-    const totalOwed = await Bill.aggregate([
-      { $match: { tenant: user._id, status: { $in: ['Pending', 'Partial'] } } },
-      { $group: { _id: null, total: { $sum: '$remainingAmount' } } }
-    ]);
+      const totalOwed = await Bill.aggregate([
+        { $match: { tenant: user._id, status: { $in: ['Pending', 'Partial'] } } },
+        { $group: { _id: null, total: { $sum: '$remainingAmount' } } }
+      ]);
 
-    const amountOwed = totalOwed.length > 0 ? totalOwed[0].total : 0;
+      const amountOwed = totalOwed.length > 0 ? totalOwed[0].total : 0;
 
-    let menu = `CON Welcome to SafeStay, ${user.name}!\n`;
-    
-    if (pendingBills > 0) {
-      menu += `⚠ You have ${pendingBills} pending bill(s)\n`;
-      menu += `💰 Total owed: ${USSDMenuService.formatCurrency(amountOwed)}\n`;
-    } else {
-      menu += `✓ All bills are up to date!\n`;
+      let menu = `CON Welcome to SafeStay, ${user.name}!\n`;
+      
+      if (pendingBills > 0) {
+        menu += `⚠ You have ${pendingBills} pending bill(s)\n`;
+        menu += `💰 Total owed: KES ${amountOwed.toLocaleString()}\n`;
+      } else {
+        menu += `✓ All bills are up to date!\n`;
+      }
+
+      menu += `\n1. View Bills\n2. Make Payment\n3. File Complaint\n4. View Profile\n5. Contact Landlord\n6. Help\n0. Exit`;
+
+      return menu;
+    } catch (error) {
+      console.error('Main Menu Error:', error);
+      return 'CON Welcome to SafeStay!\n\n1. View Bills\n2. Make Payment\n3. File Complaint\n4. View Profile\n5. Contact Landlord\n6. Help\n0. Exit';
     }
-
-    menu += `\n1. View Bills\n2. Make Payment\n3. File Complaint\n4. View Profile\n5. Contact Landlord\n6. Help\n0. Exit`;
-
-    return menu;
   }
 
   static async handleMainMenuChoice(choice, user, session) {
