@@ -190,6 +190,7 @@ export default function Login() {
       }
 
       console.log('🌐 Making API call...');
+      
       const res = isLogin ? await loginUser(payload) : await registerUser(payload);
       console.log('✅ API call successful:', res.data);
 
@@ -206,7 +207,17 @@ export default function Login() {
     } catch (error) {
       console.error('❌ Auth failed:', error);
       console.error('❌ Error response:', error.response?.data);
-      const errorMessage = error.response?.data?.message || error.message || 'Authentication failed';
+      
+      // Provide user-friendly error messages for network issues
+      let errorMessage = 'Authentication failed';
+      if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        errorMessage = 'Request timed out. The server might be starting up, please try again in a moment.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
       setError(errorMessage);
     } finally {
       console.log('⏰ Setting loading to false');

@@ -5,17 +5,28 @@ import io from 'socket.io-client';
 const backendBaseUrl = "https://safe-stay-backend.onrender.com";
 const API_BaseUrl = `${backendBaseUrl}/api`;
 
-// Axios instance with performance optimizations
+// Axios instance with robust error handling
 const API = axios.create({
   baseURL: API_BaseUrl,
-  timeout: 30000, // Increase timeout to 30 seconds for deployment
+  timeout: 60000, // 60 seconds for cold starts
   headers: {
     'Content-Type': 'application/json',
   },
-  // Add retry configuration
-  retry: 3,
-  retryDelay: 1000,
 });
+
+// Retry function for failed requests
+const retryRequest = async (fn, retries = 3, delay = 2000) => {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries > 0 && (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK' || error.response?.status >= 500)) {
+      console.log(`Retrying request... ${retries} attempts left`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return retryRequest(fn, retries - 1, delay * 1.5);
+    }
+    throw error;
+  }
+};
 
 // Request interceptor with caching
 const requestCache = new Map();
@@ -66,16 +77,16 @@ API.interceptors.response.use(
 // ✅ Wake up backend function (for Render free tier)
 export const wakeUpBackend = async () => {
   try {
-    await API.get('/health', { timeout: 60000 }); // 1 minute timeout for wake up
+    await retryRequest(() => API.get('/health'), 5, 3000); // Extra retries for wake up
     console.log('Backend is awake');
   } catch (error) {
     console.error('Failed to wake up backend:', error);
   }
 };
 
-// ✅ Auth APIs
-export const registerUser = (userData) => API.post("/auth/register", userData);
-export const loginUser = (userData) => API.post("/auth/login", userData);
+// ✅ Auth APIs with retry
+export const registerUser = (userData) => retryRequest(() => API.post("/auth/register", userData));
+export const loginUser = (userData) => retryRequest(() => API.post("/auth/login", userData));
 
 // ✅ User APIs
 export const getUserProfile = () => API.get("/users/profile");
@@ -124,7 +135,7 @@ export const updateRule = (ruleId, ruleData) => API.put(`/rules/${ruleId}`, rule
 export const deleteRule = (ruleId) => API.delete(`/rules/${ruleId}`);
 
 // ✅ Apartments APIs
-export const getAvailableApartments = () => API.get(`/apartments/available?t=${Date.now()}`);
+export const getAvailableApartments = () => retryRequest(() => API.get(`/apartments/available?t=${Date.now()}`));
 export const createApartment = (apartmentData) => API.post("/apartments", apartmentData);
 export const getLandlordApartments = () => API.get("/apartments/landlord/my-apartments");
 export const updateApartment = (apartmentId, apartmentData) => API.put(`/apartments/${apartmentId}`, apartmentData);
