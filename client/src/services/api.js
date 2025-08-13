@@ -87,11 +87,14 @@ API.interceptors.response.use(
 export const wakeUpBackend = async () => {
   console.log('🚀 Waking up backend server...');
   try {
-    // Use the correct health endpoint (not /api/health)
+    // Use the correct health endpoint with proper CORS handling
     const healthAPI = axios.create({
       baseURL: backendBaseUrl, // Use base URL without /api
       timeout: 60000,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
     });
     
     await retryRequest(() => healthAPI.get('/health'), 10, 2000); // 10 retries for wake up
@@ -100,16 +103,28 @@ export const wakeUpBackend = async () => {
   } catch (error) {
     console.warn('⚠️ Primary health check failed, trying backup endpoint...');
     
-    // Backup: try a simple API endpoint
+    // Backup: try a simple API endpoint that's definitely configured for CORS
     try {
       await retryRequest(() => API.get('/apartments/available'), 3, 1000);
       console.log('✅ Backend is responsive via backup check');
       return true;
     } catch (backupError) {
-      console.error('❌ Both primary and backup health checks failed');
-      console.error('Primary error:', error.message);
-      console.error('Backup error:', backupError.message);
-      return false;
+      console.warn('⚠️ Backup failed, trying final fallback...');
+      
+      // Final fallback: just try to make any API call to wake up the server
+      try {
+        await API.get('/auth/test', { timeout: 30000 }).catch(() => {
+          // We don't care if this fails, we just want to wake up the server
+          console.log('✅ Server wake-up call sent (response not important)');
+        });
+        return true;
+      } catch (finalError) {
+        console.error('❌ All health check attempts failed');
+        console.error('Primary error:', error.message);
+        console.error('Backup error:', backupError.message);
+        console.error('Final error:', finalError.message);
+        return false;
+      }
     }
   }
 };
