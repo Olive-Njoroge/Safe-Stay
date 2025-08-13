@@ -355,7 +355,28 @@ export default function Login() {
                 />
               ) : (
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">Select Apartment</label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-gray-700">Select Apartment</label>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setApartmentsLoading(true);
+                        try {
+                          const response = await getAvailableApartments();
+                          const apartments = response.data.data || response.data || [];
+                          setAvailableApartments(apartments);
+                        } catch (error) {
+                          console.error('❌ Error refreshing apartments:', error);
+                        } finally {
+                          setApartmentsLoading(false);
+                        }
+                      }}
+                      disabled={apartmentsLoading}
+                      className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {apartmentsLoading ? '⟳' : '🔄'} Refresh
+                    </button>
+                  </div>
                   {console.log('🏠 Rendering apartment dropdown. Available apartments:', availableApartments.length, 'Loading:', apartmentsLoading)}
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

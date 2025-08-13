@@ -100,7 +100,7 @@ export const updateRule = (ruleId, ruleData) => API.put(`/rules/${ruleId}`, rule
 export const deleteRule = (ruleId) => API.delete(`/rules/${ruleId}`);
 
 // ✅ Apartments APIs
-export const getAvailableApartments = () => API.get("/apartments/available");
+export const getAvailableApartments = () => API.get(`/apartments/available?t=${Date.now()}`);
 export const createApartment = (apartmentData) => API.post("/apartments", apartmentData);
 export const getLandlordApartments = () => API.get("/apartments/landlord/my-apartments");
 export const updateApartment = (apartmentId, apartmentData) => API.put(`/apartments/${apartmentId}`, apartmentData);
