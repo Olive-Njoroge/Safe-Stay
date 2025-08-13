@@ -1,8 +1,57 @@
 const express = require('express');
 const User = require('../models/User');
 const Bill = require('../models/Bills');
+const { createUSSDTestUser, getUSSDTestStatus } = require('../controllers/ussdTestController');
 
 const router = express.Router();
+
+// USSD-specific test routes
+router.post('/ussd-setup', createUSSDTestUser);
+router.get('/ussd-status', getUSSDTestStatus);
+
+// Legacy quick setup (keep for backward compatibility)
+router.post('/quick-setup', async (req, res) => {
+  try {
+    // Redirect to USSD setup
+    return createUSSDTestUser(req, res);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create test data'
+    });
+  }
+});
+
+// Quick health check for test data
+router.get('/status', async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments();
+    const totalBills = await Bill.countDocuments();
+    const ussdTestUser = await User.findOne({ email: 'ussd@test.com' });
+
+    res.json({
+      success: true,
+      database: {
+        totalUsers,
+        totalBills,
+        hasUSSDTestUser: !!ussdTestUser
+      },
+      ussdConfig: {
+        webhookURL: 'https://safe-stay-backend.onrender.com/api/ussd/callback',
+        ussdCode: process.env.USSD_CODE || '*384*70943#',
+        testPhone: ussdTestUser?.primaryPhoneNumber || 'Not setup'
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to check status'
+    });
+  }
+});
+
+module.exports = router;
 
 // Quick test user creation for USSD testing
 router.post('/quick-setup', async (req, res) => {

@@ -57,9 +57,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/rules', rulesRoutes);
 app.use('/api/apartments', apartmentRoutes);
-// app.use('/api/ussd', ussdRoutes);
-// app.use('/api/payments', paymentRoutes);
-// app.use('/api/test', testRoutes);
+app.use('/api/ussd', ussdRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/test', testRoutes);
 
 // Test Route
 app.get('/', (req, res) => {
@@ -82,18 +82,27 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Keep-alive for Render free tier
+// Keep-alive for Render free tier (optimized)
 if (process.env.NODE_ENV === 'production') {
   const keepAlive = () => {
-    const url = process.env.BASE_URL || 'https://safestay-api.onrender.com';
+    const url = process.env.BASE_URL || 'https://safe-stay-backend.onrender.com';
     fetch(`${url}/health`)
-      .then(res => console.log(`Keep-alive ping: ${res.status}`))
-      .catch(err => console.log('Keep-alive failed:', err.message));
+      .then(res => {
+        if (res.ok) {
+          console.log(`✓ Keep-alive: ${res.status}`);
+        }
+      })
+      .catch(err => console.log(`✗ Keep-alive failed: ${err.message}`));
   };
   
   // Ping every 14 minutes to prevent sleeping
-  setInterval(keepAlive, 14 * 60 * 1000);
+  const keepAliveInterval = setInterval(keepAlive, 14 * 60 * 1000);
   console.log('🔄 Keep-alive enabled for production');
+  
+  // Cleanup on exit
+  process.on('SIGTERM', () => {
+    clearInterval(keepAliveInterval);
+  });
 }
 
 // Create HTTP Server & Socket.IO

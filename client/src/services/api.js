@@ -5,17 +5,32 @@ import io from 'socket.io-client';
 const backendBaseUrl = "https://safe-stay-backend.onrender.com";
 const API_BaseUrl = `${backendBaseUrl}/api`;
 
-// Axios instance
+// Axios instance with performance optimizations
 const API = axios.create({
   baseURL: API_BaseUrl,
+  timeout: 10000, // 10 second timeout
+  headers: {
+    'Content-Type': 'application/json',
+  }
 });
 
-// ✅ Attach token to every request if available
+// Request interceptor with caching
+const requestCache = new Map();
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // Add request caching for GET requests
+  if (config.method === 'get') {
+    const cacheKey = `${config.url}_${JSON.stringify(config.params)}`;
+    const cachedResponse = requestCache.get(cacheKey);
+    if (cachedResponse && Date.now() - cachedResponse.timestamp < 60000) { // 1 minute cache
+      return Promise.resolve(cachedResponse.data);
+    }
+  }
+  
   return config;
 }, (error) => Promise.reject(error));
 
