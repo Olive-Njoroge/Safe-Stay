@@ -9,6 +9,19 @@ router.post('/', USSDController.handleUSSD);
 // Alternative callback endpoint
 router.post('/callback', USSDController.handleUSSD);
 
+// Simple test endpoint
+router.get('/test-simple', (req, res) => {
+  res.set('Content-Type', 'text/plain');
+  res.send('CON USSD Test\n1. Option 1\n2. Option 2');
+});
+
+// Debug endpoint
+router.post('/debug', (req, res) => {
+  console.log('USSD Debug Request:', req.body);
+  res.set('Content-Type', 'text/plain');
+  res.send('CON Debug Response\nRequest received successfully');
+});
+
 // Test endpoint to simulate USSD request
 router.post('/test', async (req, res) => {
   try {
