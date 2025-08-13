@@ -1,24 +1,11 @@
 const express = require('express');
-const mongoose = require// Keep-alive for Render free tier (temporarily disabled)
-/*
-if (process.env.NODE_ENV === 'production') {
-  const keepAlive = () => {
-    const url = process.env.BASE_URL || 'https://safestay-api.onrender.com';
-    fetch(`${url}/health`)
-      .then(res => console.log(`Keep-alive ping: ${res.status}`))
-      .catch(err => console.log('Keep-alive failed:', err.message));
-  };
-  
-  // Ping every 14 minutes to prevent sleeping
-  setInterval(keepAlive, 14 * 60 * 1000);
-  console.log('🔄 Keep-alive enabled for production');
-}
-*/
+const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const http = require('http');  // <-- NEW
 const { Server } = require('socket.io');  // <-- NEW
 const connectDB = require('./config/db');
 const cors = require('cors');  // <-- Optional but recommended
+const compression = require('compression'); // Add compression
 
 dotenv.config();
 
@@ -31,8 +18,25 @@ console.log('🔑 JWT_SECRET preview:', process.env.JWT_SECRET ? process.env.JWT
 connectDB();
 
 const app = express();
-app.use(express.json());
-app.use(cors());  // Allow frontend to connect (adjust origin in production)
+
+// Performance optimizations
+app.use(compression()); // Compress all responses
+app.use(express.json({ limit: '5mb' })); // Optimize JSON parsing
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://safe-stay-frontend.onrender.com', 'https://safestay.onrender.com'] 
+    : '*',
+  credentials: true
+}));
+
+// Cache control headers for better performance
+app.use((req, res, next) => {
+  // Cache API responses for 5 minutes (except auth routes)
+  if (req.url.startsWith('/api') && !req.url.includes('/auth/')) {
+    res.set('Cache-Control', 'public, max-age=300');
+  }
+  next();
+});
 
 // Import Routes
 const billRoutes = require('./routes/billsRoute');
@@ -69,7 +73,12 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development',
-    ussdCode: process.env.USSD_CODE || 'Not configured'
+    ussdCode: process.env.USSD_CODE || 'Not configured',
+    memory: process.memoryUsage(),
+    performance: {
+      responseTime: process.hrtime(),
+      cpuUsage: process.cpuUsage()
+    }
   });
 });
 

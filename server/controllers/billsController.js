@@ -5,7 +5,7 @@ const { sendMonthlyBillNotification, sendPaymentConfirmation } = require('../ser
 // Generate monthly bills for all tenants in landlord's apartment
 exports.generateMonthlyBills = async (req, res) => {
   try {
-    const currentUser = await User.findById(req.user._id);
+    const currentUser = await User.findById(req.user._id).select('apartmentName role');
     
     if (!currentUser || currentUser.role !== 'Landlord') {
       return res.status(403).json({ message: 'Only landlords can generate bills' });
@@ -13,49 +13,46 @@ exports.generateMonthlyBills = async (req, res) => {
 
     const { month, year, dueDate } = req.body;
 
-    // Find all tenants in the same apartment
-    const tenants = await User.find({
-      apartmentName: new RegExp(currentUser.apartmentName, 'i'),
-      role: 'Tenant'
-    });
+    // Use parallel queries for better performance
+    const [tenants, existingBills] = await Promise.all([
+      User.find({
+        apartmentName: new RegExp(currentUser.apartmentName, 'i'),
+        role: 'Tenant'
+      }).select('_id rentAmount'),
+      Bill.find({
+        landlord: currentUser._id,
+        month,
+        year
+      }).select('tenant')
+    ]);
 
     if (tenants.length === 0) {
       return res.status(404).json({ message: 'No tenants found in this apartment' });
     }
 
-    const bills = [];
-    
-    for (const tenant of tenants) {
-      // Check if bill already exists for this month
-      const existingBill = await Bill.findOne({
-        tenant: tenant._id,
-        month,
-        year
-      });
+    // Filter out tenants who already have bills for this month
+    const existingTenantIds = new Set(existingBills.map(bill => bill.tenant.toString()));
+    const tenantsNeedingBills = tenants.filter(tenant => !existingTenantIds.has(tenant._id.toString()));
 
-      if (!existingBill) {
-        const newBill = await Bill.create({
-          tenant: tenant._id,
-          landlord: currentUser._id,
-          apartmentName: currentUser.apartmentName,
-          amount: currentUser.rentAmount,
-          remainingAmount: currentUser.rentAmount,
-          dueDate,
-          month,
-          year,
-          description: `Monthly rent for ${month} ${year}`
-        });
-
-        bills.push(newBill);
-        
-        // Send email notification to tenant
-        try {
-          await sendMonthlyBillNotification(tenant, newBill);
-        } catch (emailError) {
-          console.error('Error sending bill notification email:', emailError);
-        }
-      }
+    if (tenantsNeedingBills.length === 0) {
+      return res.status(400).json({ message: 'Bills already exist for all tenants for this month' });
     }
+
+    // Prepare bills for bulk insert
+    const billsToInsert = tenantsNeedingBills.map(tenant => ({
+      tenant: tenant._id,
+      landlord: currentUser._id,
+      apartmentName: currentUser.apartmentName,
+      amount: tenant.rentAmount || currentUser.rentAmount,
+      remainingAmount: tenant.rentAmount || currentUser.rentAmount,
+      dueDate,
+      month,
+      year,
+      description: `Monthly rent for ${month} ${year}`
+    }));
+
+    // Bulk insert bills for better performance
+    const bills = await Bill.insertMany(billsToInsert);
 
     res.status(201).json({ 
       message: `Generated ${bills.length} bills for ${month} ${year}`,
