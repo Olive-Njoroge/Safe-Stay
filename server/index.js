@@ -104,7 +104,6 @@ const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const rulesRoutes = require('./routes/rulesRoute');
 const apartmentRoutes = require('./routes/apartmentRoutes');
-const ussdRoutes = require('./routes/ussdRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const testRoutes = require('./routes/testRoutes');
 
@@ -115,7 +114,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/rules', rulesRoutes);
 app.use('/api/apartments', apartmentRoutes);
-app.use('/api/ussd', ussdRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/test', testRoutes);
 
@@ -136,7 +134,6 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development',
-    ussdCode: process.env.USSD_CODE || 'Not configured',
     memory: process.memoryUsage(),
     performance: {
       responseTime: process.hrtime(),
@@ -194,5 +191,4 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📡 USSD Code: ${process.env.USSD_CODE || 'Not configured'}`);
 });
